@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  neo4j:
+    image: bitnami/neo4j:latest
+    container_name: neo4j-dev
+    ports:
+      - "7474:7474"  # HTTP
+      - "7473:7473"  # HTTPS
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_PASSWORD=bitnami  # Default password for neo4j user
+      - NEO4J_HOST=0.0.0.0     # Listen on all interfaces
+      - NEO4J_ALLOW_UPGRADE=true
+      - NEO4J_dbms_connector_http_listen__address=:7474
+      - NEO4J_dbms_connector_https_listen__address=:7473
+      - NEO4J_dbms_connector_bolt_listen__address=:7687
+    volumes:
+      - neo4j_data:/bitnami/neo4j/data
+      - neo4j_logs:/bitnami/neo4j/logs
+      - neo4j_imports:/bitnami/neo4j/imports
+      - neo4j_plugins:/bitnami/neo4j/plugins
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_imports:
+  neo4j_plugins: 

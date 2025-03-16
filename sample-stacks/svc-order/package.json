@@ -1,0 +1,35 @@
+{
+  "name": "svc-order",
+  "version": "1.0.0",
+  "description": "Order microservice for CodeGraph testing",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc",
+    "start": "bun src/index.ts",
+    "install:kafka": "pnpm install kafkajs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.6.2",
+  "dependencies": {
+    "@types/express": "5.0.0",
+    "@types/node": "22.13.10",
+    "amqplib": "^0.10.3",
+    "@types/amqplib": "^0.10.4",
+    "axios": "^1.6.7",
+    "bun-types": "1.2.5",
+    "express": "5.0.0",
+    "sequelize": "^6.37.1",
+    "typescript": "5.8.2",
+    "uuid": "^9.0.1",
+    "@types/uuid": "^9.0.8"
+  },
+  "devDependencies": {
+    "@types/express-serve-static-core": "^5.0.6"
+  },
+  "optionalDependencies": {
+    "kafkajs": "^2.2.4"
+  }
+}

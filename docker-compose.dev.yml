@@ -9,8 +9,6 @@ services:
       - "7473:7473"  # HTTPS
       - "7687:7687"  # Bolt
     environment:
-      - NEO4J_PASSWORD=bitnami  # Default password for neo4j user
-      - NEO4J_HOST=0.0.0.0     # Listen on all interfaces
       - NEO4J_ALLOW_UPGRADE=true
       - NEO4J_dbms_connector_http_listen__address=:7474
       - NEO4J_dbms_connector_https_listen__address=:7473

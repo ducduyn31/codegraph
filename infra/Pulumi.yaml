@@ -1,0 +1,3 @@
+name: aws-bedrock-deepseek
+runtime: nodejs
+description: A Pulumi project to set up AWS Bedrock with Deepseek R1 7B model

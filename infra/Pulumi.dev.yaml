@@ -1,0 +1,4 @@
+config:
+  aws:region: ap-southeast-2
+  aws-bedrock-deepseek:projectName: deepseek-r1-7b
+  aws-bedrock-deepseek:environment: dev

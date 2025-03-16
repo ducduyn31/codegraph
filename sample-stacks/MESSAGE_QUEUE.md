@@ -1,13 +1,13 @@
 # Message Queue Abstraction
 
-This project includes a flexible message queue abstraction layer that allows you to easily switch between different message queue providers (RabbitMQ, Kafka, etc.) without changing your application code.
+This project includes a flexible message queue abstraction layer that allows you to easily switch between different message queue providers (Kafka, etc.) without changing your application code.
 
 ## Architecture
 
 The message queue abstraction is implemented using the Adapter pattern, which provides a common interface for different message queue providers. The abstraction consists of the following components:
 
 - **MessageQueueProvider Interface**: Defines the common operations that all message queue implementations must support.
-- **Concrete Implementations**: Implementations for specific message queue providers (RabbitMQ, Kafka, etc.).
+- **Concrete Implementations**: Implementations for specific message queue providers (Kafka, etc.).
 - **Factory**: Creates the appropriate implementation based on configuration.
 - **Configuration**: Environment variables that control which provider to use and how to connect to it.
 
@@ -15,33 +15,24 @@ The message queue abstraction is implemented using the Adapter pattern, which pr
 
 The following message queue providers are currently supported:
 
-- **RabbitMQ** (default): A robust and widely-used message broker.
-- **Kafka**: A distributed streaming platform with high throughput and scalability.
+- **Kafka** (default): A distributed streaming platform with high throughput and scalability.
 - **Mock**: A simple in-memory implementation for testing purposes.
 
 ## Configuration
 
 You can configure the message queue provider using the following environment variables:
 
-- `MESSAGE_QUEUE_PROVIDER`: The provider to use (`rabbitmq`, `kafka`, or `mock`).
+- `MESSAGE_QUEUE_PROVIDER`: The provider to use (`kafka` or `mock`).
 - `MESSAGE_QUEUE_URL`: The URL to connect to the message queue server.
 - `MESSAGE_QUEUE_EXCHANGE`: The name of the exchange/topic to use.
 
 ### Example Configuration
 
-#### Using RabbitMQ (default)
-
-```bash
-MESSAGE_QUEUE_PROVIDER=rabbitmq
-MESSAGE_QUEUE_URL=amqp://guest:guest@rabbitmq:5672
-MESSAGE_QUEUE_EXCHANGE=luxury_tours
-```
-
-#### Using Kafka
+#### Using Kafka (default)
 
 ```bash
 MESSAGE_QUEUE_PROVIDER=kafka
-MESSAGE_QUEUE_URL=kafka:9092
+MESSAGE_QUEUE_URL=kafka1:9092,kafka2:9094,kafka3:9095
 MESSAGE_QUEUE_EXCHANGE=luxury_tours
 ```
 
@@ -53,19 +44,41 @@ MESSAGE_QUEUE_PROVIDER=mock
 
 ## Docker Compose Configuration
 
-The `docker-compose.yml` file includes both RabbitMQ and Kafka services, allowing you to easily switch between them. By default, RabbitMQ is used, but you can switch to Kafka by setting the appropriate environment variables.
+The `docker-compose.yml` file includes a Kafka cluster with 3 brokers using KRaft mode. By default, Kafka is used as the message queue provider.
 
-### Running with RabbitMQ (default)
+### Kafka Cluster Configuration
+
+The Kafka cluster consists of:
+- 3 Kafka brokers (kafka1, kafka2, kafka3) for high availability and fault tolerance
+- KRaft mode (Kafka Raft) for metadata management without ZooKeeper
+- Combined mode nodes (both controller and broker roles)
+- Replication factor of 3 for data redundancy
+- Minimum in-sync replicas set to 2 for data consistency
+
+### Running with Kafka (default)
 
 ```bash
 docker-compose up
 ```
 
-### Running with Kafka
+### KRaft Mode
 
-```bash
-MESSAGE_QUEUE_PROVIDER=kafka MESSAGE_QUEUE_URL=kafka:9092 docker-compose up
-```
+The Kafka cluster is configured to use KRaft (Kafka Raft) mode, which is the new consensus protocol in Kafka that eliminates the dependency on ZooKeeper. Benefits of KRaft mode include:
+
+- Simplified architecture with no ZooKeeper dependency
+- Improved scalability and performance
+- Better fault tolerance and recovery
+- Reduced operational complexity
+- Future-proof as ZooKeeper is being phased out in Apache Kafka
+
+Each Kafka node in the cluster is configured in combined mode, meaning it serves both as a controller (handling metadata) and a broker (handling data).
+
+### Debugging Tools
+
+The stack includes the following debugging tools:
+
+- **AKHQ**: A Kafka UI for monitoring and managing Kafka clusters, available at http://localhost:8080
+- **pgAdmin**: A PostgreSQL administration and development platform, available at http://localhost:5050 (login with admin@example.com / admin)
 
 ## Adding a New Provider
 
@@ -104,7 +117,6 @@ Then update the factory:
 ```typescript
 // factory.ts
 export enum MessageQueueType {
-  RABBITMQ = 'rabbitmq',
   KAFKA = 'kafka',
   MOCK = 'mock',
   SQS = 'sqs',
@@ -126,17 +138,12 @@ export const createMessageQueueProvider = (
 
 ## Dependencies
 
-- For RabbitMQ: `amqplib`
 - For Kafka: `kafkajs`
 - For AWS SQS: `aws-sdk`
 
 Make sure to install the required dependencies for the providers you want to use:
 
 ```bash
-# For RabbitMQ
-npm install amqplib
-npm install @types/amqplib --save-dev
-
 # For Kafka
 npm install kafkajs
 

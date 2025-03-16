@@ -5,7 +5,7 @@ import { MessageQueueType, createMessageQueueProvider } from './factory';
 
 // Default configuration
 const DEFAULT_CONFIG: MessageQueueConfig = {
-  url: process.env.MESSAGE_QUEUE_URL || 'amqp://localhost:5672',
+  url: process.env.MESSAGE_QUEUE_URL || 'kafka:9092',
   exchangeName: process.env.MESSAGE_QUEUE_EXCHANGE || 'luxury_tours',
   queues: {
     gateway: 'gateway_events',
@@ -15,8 +15,8 @@ const DEFAULT_CONFIG: MessageQueueConfig = {
   },
 };
 
-// Provider type from environment or default to RabbitMQ
-const PROVIDER_TYPE = (process.env.MESSAGE_QUEUE_PROVIDER as MessageQueueType) || MessageQueueType.RABBITMQ;
+// Provider type from environment or default to Kafka
+const PROVIDER_TYPE = (process.env.MESSAGE_QUEUE_PROVIDER as MessageQueueType) || MessageQueueType.KAFKA;
 
 // Create the message queue provider
 let provider: MessageQueueProvider | null = null;

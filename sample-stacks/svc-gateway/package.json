@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "build": "tsc",
-    "start": "bun src/index.ts",
-    "install:kafka": "pnpm install kafkajs"
+    "start": "bun src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,8 +15,6 @@
   "dependencies": {
     "@types/express": "5.0.0",
     "@types/node": "22.13.10",
-    "amqplib": "^0.10.3",
-    "@types/amqplib": "^0.10.4",
     "bun-types": "1.2.5",
     "express": "5.0.0",
     "typescript": "5.8.2",
@@ -28,12 +25,10 @@
     "express-rate-limit": "^7.1.5",
     "http-proxy-middleware": "^3.0.0",
     "cors": "^2.8.5",
-    "@types/cors": "^2.8.17"
+    "@types/cors": "^2.8.17",
+    "kafkajs": "^2.2.4"
   },
   "devDependencies": {
     "@types/express-serve-static-core": "^5.0.6"
-  },
-  "optionalDependencies": {
-    "kafkajs": "^2.2.4"
   }
 }

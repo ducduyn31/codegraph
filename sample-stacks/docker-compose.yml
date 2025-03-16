@@ -8,76 +8,141 @@ services:
       dockerfile: Dockerfile
     container_name: svc-gateway
     depends_on:
-      rabbitmq:
+      kafka1:
         condition: service_healthy
-      kafka:
-        condition: service_started
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     environment:
       PORT: 3000
       USER_SERVICE_URL: 'http://svc-user:3000'
       ORDER_SERVICE_URL: 'http://svc-order:3001'
       ACCOMMODATION_SERVICE_URL: 'http://svc-accommodation:3002'
       # Message Queue Configuration
-      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-rabbitmq}
-      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-amqp://guest:guest@rabbitmq:5672}
+      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-kafka}
+      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-kafka1:9092,kafka2:9094,kafka3:9095}
       MESSAGE_QUEUE_EXCHANGE: ${MESSAGE_QUEUE_EXCHANGE:-luxury_tours}
-      # Legacy RabbitMQ config (for backward compatibility)
-      RABBITMQ_URL: 'amqp://guest:guest@rabbitmq:5672'
       JWT_SECRET: 'luxury-tours-secret-key'
     ports:
       - "80:3000"  # Expose on port 80 for external access
     restart: unless-stopped
 
-  # RabbitMQ for message queue
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
+  # Kafka cluster using KRaft mode (no ZooKeeper)
+  # Controller node (combined mode: controller + broker)
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka1
     ports:
-      - "5672:5672"  # AMQP port
-      - "15672:15672"  # Management UI
+      - "9092:9092"
+      - "29092:29092"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka1:9092,CONTROLLER://kafka1:9093,PLAINTEXT_HOST://0.0.0.0:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka1:9092,PLAINTEXT_HOST://localhost:29092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - kafka1-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Zookeeper (required for Kafka)
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+  # Broker 2
+  kafka2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka2
     ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-
-  # Kafka for message queue (alternative to RabbitMQ)
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "9094:9094"
+      - "29093:29093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_NODE_ID: 2
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka2:9094,CONTROLLER://kafka2:9093,PLAINTEXT_HOST://0.0.0.0:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka2:9094,PLAINTEXT_HOST://localhost:29093'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
     volumes:
-      - kafka-data:/var/lib/kafka/data
+      - kafka2-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9094", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Broker 3
+  kafka3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka3
+    ports:
+      - "9095:9095"
+      - "29094:29094"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka3:9095,CONTROLLER://kafka3:9093,PLAINTEXT_HOST://0.0.0.0:29094'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka3:9095,PLAINTEXT_HOST://localhost:29094'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9095", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # AKHQ - Kafka UI for debugging
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-cluster:
+              properties:
+                bootstrap.servers: "kafka1:9092,kafka2:9094,kafka3:9095"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 
   # PostgreSQL for user service
   postgres-user:
@@ -133,6 +198,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # pgAdmin for database debugging
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres-user
+      - postgres-order
+      - postgres-accommodation
+    restart: unless-stopped
+
   # User service
   svc-user:
     build:
@@ -142,10 +225,12 @@ services:
     depends_on:
       postgres-user:
         condition: service_healthy
-      rabbitmq:
+      kafka1:
         condition: service_healthy
-      kafka:
-        condition: service_started
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     environment:
       PORT: 3000
       DB_HOST: postgres-user
@@ -155,11 +240,9 @@ services:
       DB_PASSWORD: postgres
       DB_FORCE_SYNC: 'true'  # Set to 'false' in production
       # Message Queue Configuration
-      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-rabbitmq}
-      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-amqp://guest:guest@rabbitmq:5672}
+      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-kafka}
+      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-kafka1:9092,kafka2:9094,kafka3:9095}
       MESSAGE_QUEUE_EXCHANGE: ${MESSAGE_QUEUE_EXCHANGE:-luxury_tours}
-      # Legacy RabbitMQ config (for backward compatibility)
-      RABBITMQ_URL: 'amqp://guest:guest@rabbitmq:5672'
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -173,10 +256,12 @@ services:
     depends_on:
       postgres-order:
         condition: service_healthy
-      rabbitmq:
+      kafka1:
         condition: service_healthy
-      kafka:
-        condition: service_started
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     environment:
       PORT: 3001
       DB_HOST: postgres-order
@@ -186,11 +271,9 @@ services:
       DB_PASSWORD: postgres
       DB_FORCE_SYNC: 'true'  # Set to 'false' in production
       # Message Queue Configuration
-      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-rabbitmq}
-      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-amqp://guest:guest@rabbitmq:5672}
+      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-kafka}
+      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-kafka1:9092,kafka2:9094,kafka3:9095}
       MESSAGE_QUEUE_EXCHANGE: ${MESSAGE_QUEUE_EXCHANGE:-luxury_tours}
-      # Legacy RabbitMQ config (for backward compatibility)
-      RABBITMQ_URL: 'amqp://guest:guest@rabbitmq:5672'
     ports:
       - "3001:3001"
     restart: unless-stopped
@@ -204,10 +287,12 @@ services:
     depends_on:
       postgres-accommodation:
         condition: service_healthy
-      rabbitmq:
+      kafka1:
         condition: service_healthy
-      kafka:
-        condition: service_started
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     environment:
       PORT: 3002
       DB_HOST: postgres-accommodation
@@ -217,20 +302,18 @@ services:
       DB_PASSWORD: postgres
       DB_FORCE_SYNC: 'true'  # Set to 'false' in production
       # Message Queue Configuration
-      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-rabbitmq}
-      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-amqp://guest:guest@rabbitmq:5672}
+      MESSAGE_QUEUE_PROVIDER: ${MESSAGE_QUEUE_PROVIDER:-kafka}
+      MESSAGE_QUEUE_URL: ${MESSAGE_QUEUE_URL:-kafka1:9092,kafka2:9094,kafka3:9095}
       MESSAGE_QUEUE_EXCHANGE: ${MESSAGE_QUEUE_EXCHANGE:-luxury_tours}
-      # Legacy RabbitMQ config (for backward compatibility)
-      RABBITMQ_URL: 'amqp://guest:guest@rabbitmq:5672'
     ports:
       - "3002:3002"
     restart: unless-stopped
 
 volumes:
-  rabbitmq-data:
-  zookeeper-data:
-  zookeeper-logs:
-  kafka-data:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:
   postgres-user-data:
   postgres-order-data:
   postgres-accommodation-data:
+  pgadmin-data:

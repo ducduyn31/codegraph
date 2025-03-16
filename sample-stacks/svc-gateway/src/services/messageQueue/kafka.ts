@@ -23,13 +23,33 @@ export class KafkaProvider implements MessageQueueProvider {
   }
 
   /**
+   * Parse broker URLs from a comma-separated string
+   * @param urlString - Comma-separated list of broker URLs
+   * @returns Array of broker URLs
+   */
+  private parseBrokerUrls(urlString: string): string[] {
+    // Check if the URL contains commas, indicating multiple brokers
+    if (urlString.includes(',')) {
+      return urlString.split(',').map(url => url.trim());
+    }
+    
+    // Handle single URL case
+    try {
+      const url = new URL(urlString);
+      return [`${url.hostname}:${url.port || '9092'}`];
+    } catch (error) {
+      // If not a valid URL, assume it's already in the format "hostname:port"
+      return [urlString];
+    }
+  }
+
+  /**
    * Initialize the Kafka connection
    */
   public async initialize(): Promise<void> {
     try {
-      // Extract host and port from URL
-      const url = new URL(this.config.url);
-      const brokers = [`${url.hostname}:${url.port || '9092'}`];
+      // Parse broker URLs
+      const brokers = this.parseBrokerUrls(this.config.url);
 
       // Create Kafka client
       this.kafka = new Kafka({

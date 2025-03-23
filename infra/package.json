@@ -1,13 +1,32 @@
 {
-    "name": "codegraph",
-    "main": "index.ts",
-    "devDependencies": {
-        "@types/node": "^18",
-        "typescript": "^5.0.0"
-    },
-    "dependencies": {
-        "@pulumi/aws": "^6.0.0",
-        "@pulumi/awsx": "^2.0.2",
-        "@pulumi/pulumi": "^3.113.0"
-    }
+  "name": "infra",
+  "version": "1.0.0",
+  "description": "Infrastructure as code for code structure analysis system",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "pulumi up",
+    "destroy": "pulumi destroy",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --apply ."
+  },
+  "dependencies": {
+    "@pulumi/aws": "^6.73.0",
+    "@pulumi/awsx": "^2.21.1",
+    "@pulumi/pulumi": "^3.157.0",
+    "common": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.8.2"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "@pulumi/docker",
+      "@pulumi/docker-build",
+      "protobufjs"
+    ]
+  }
 }

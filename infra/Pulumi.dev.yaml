@@ -1,2 +1,4 @@
 config:
   aws:region: us-east-1
+  aws-bedrock-deepseek:projectName: deepseek-llm-r1-distill-qwen-7b
+  aws-bedrock-deepseek:environment: dev

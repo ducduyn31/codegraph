@@ -1,0 +1,6 @@
+packages:
+  - 'common'
+  - 'graph-extractor'
+  - 'infra'
+  - 'server'
+  - '!sample-stacks/**'

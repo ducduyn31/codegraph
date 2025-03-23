@@ -1,0 +1,56 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "common"
+    },
+    {
+      "path": "graph-extractor"
+    },
+    {
+      "path": "infra"
+    },
+    {
+      "path": "server"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "sample-stacks/": true,
+      "common/": "${activeWorkspaceRootFolderName} != 'common'",
+      "graph-extractor/": "${activeWorkspaceRootFolderName} != 'graph-extractor'",
+      "infra/": "${activeWorkspaceRootFolderName} != 'infra'",
+      "server/": "${activeWorkspaceRootFolderName} != 'server'"
+    },
+    "search.exclude": {
+      "sample-stacks/": true
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.biome": "explicit",
+      "source.fixAll.biome": "explicit"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[json]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[jsonc]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "biomejs.biome",
+      "ms-vscode.vscode-typescript-next"
+    ]
+  }
+}

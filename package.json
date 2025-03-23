@@ -1,0 +1,39 @@
+{
+  "name": "code-structure",
+  "version": "1.0.0",
+  "description": "Code structure analysis and visualization tools",
+  "private": true,
+  "workspaces": [
+    "common",
+    "graph-extractor",
+    "infra",
+    "server"
+  ],
+  "scripts": {
+    "dev": "docker-compose -f docker-compose.dev.yml up -d && pnpm --filter graph-extractor dev & pnpm --filter server dev",
+    "build": "pnpm --filter common build && pnpm --filter graph-extractor build && pnpm --filter server build && pnpm --filter infra build",
+    "start": "pnpm --filter server start",
+    "test": "pnpm --filter common test && pnpm --filter graph-extractor test && pnpm --filter server test && pnpm --filter infra test",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --apply .",
+    "clean": "docker-compose -f docker-compose.dev.yml down && pnpm --filter common clean && pnpm --filter graph-extractor clean && pnpm --filter server clean && pnpm --filter infra clean"
+  },
+  "keywords": [
+    "code-structure",
+    "graph",
+    "rag",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.6.0"
+}

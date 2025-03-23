@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import './mcp/index';
+import './mcp';
 
 // Load environment variables
 dotenv.config();

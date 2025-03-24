@@ -21,6 +21,7 @@ export interface ParseResult {
   classes: ClassInfo[];
   functions: FunctionInfo[];
   variables: VariableInfo[];
+  expressions: ExpressionInfo[];
 }
 
 /**
@@ -65,6 +66,7 @@ export interface MethodInfo {
   isStatic: boolean;
   visibility: 'public' | 'private' | 'protected';
   range: [number, number];
+  expressions?: ExpressionInfo[];
 }
 
 /**
@@ -88,6 +90,7 @@ export interface FunctionInfo {
   isAsync: boolean;
   isExported: boolean;
   range: [number, number];
+  expressions?: ExpressionInfo[];
 }
 
 /**
@@ -110,6 +113,18 @@ export interface VariableInfo {
   isConst: boolean;
   isExported: boolean;
   range: [number, number];
+  expressions?: ExpressionInfo[];
+}
+
+/**
+ * Expression information
+ */
+export interface ExpressionInfo {
+  type: string;
+  text: string;
+  range: [number, number];
+  parentId?: string;
+  references?: string[];
 }
 
 /**

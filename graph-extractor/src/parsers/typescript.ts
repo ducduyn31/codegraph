@@ -5,6 +5,7 @@ import type {
   AstNode,
   ClassInfo,
   ExportInfo,
+  ExpressionInfo,
   FunctionInfo,
   ImportInfo,
   MethodInfo,
@@ -131,6 +132,7 @@ export class TypeScriptParser implements Parser {
       const classes: ClassInfo[] = [];
       const functions: FunctionInfo[] = [];
       const variables: VariableInfo[] = [];
+      const expressions: ExpressionInfo[] = [];
 
       // Visit each node in the source file
       this.visitNode(sourceFile, {
@@ -139,6 +141,7 @@ export class TypeScriptParser implements Parser {
         classes,
         functions,
         variables,
+        expressions,
         sourceFile,
         typeChecker,
       });
@@ -150,6 +153,7 @@ export class TypeScriptParser implements Parser {
         classes,
         functions,
         variables,
+        expressions,
       };
     } catch (error) {
       console.error(`Error parsing source for ${filePath}:`, error);
@@ -168,12 +172,13 @@ export class TypeScriptParser implements Parser {
       classes: ClassInfo[];
       functions: FunctionInfo[];
       variables: VariableInfo[];
+      expressions: ExpressionInfo[];
       sourceFile: ts.SourceFile;
       typeChecker?: ts.TypeChecker;
     }
   ): void {
     // Destructure context, but only include typeChecker if we're going to use it
-    const { imports, exports, classes, functions, variables, sourceFile } = context;
+    const { imports, exports, classes, functions, variables, expressions, sourceFile } = context;
     
     // Process imports
     if (ts.isImportDeclaration(node)) {
@@ -214,6 +219,9 @@ export class TypeScriptParser implements Parser {
         range,
       });
     }
+    
+    // Process expressions
+    this.processExpression(node, expressions, sourceFile, context);
     
     // Recursively visit child nodes
     ts.forEachChild(node, (child) => this.visitNode(child, context));
@@ -421,7 +429,8 @@ export class TypeScriptParser implements Parser {
           }
         }
         
-        methods.push({
+        // Create method info
+        const methodInfo: MethodInfo = {
           name: methodName,
           parameters,
           returnType,
@@ -429,7 +438,10 @@ export class TypeScriptParser implements Parser {
           isStatic,
           visibility,
           range: methodRange,
-        });
+          expressions: [], // Initialize empty expressions array
+        };
+        
+        methods.push(methodInfo);
       }
       
       // Process properties
@@ -557,14 +569,18 @@ export class TypeScriptParser implements Parser {
         mod.kind === ts.SyntaxKind.DefaultKeyword
     ) || false;
     
-    functions.push({
+    // Create function info
+    const functionInfo: FunctionInfo = {
       name: functionName,
       parameters,
       returnType,
       isAsync,
       isExported,
       range,
-    });
+      expressions: [], // Initialize empty expressions array
+    };
+    
+    functions.push(functionInfo);
   }
 
   /**
@@ -614,13 +630,17 @@ export class TypeScriptParser implements Parser {
       // Check if variable is const
       const isConst = !!(node.declarationList.flags & ts.NodeFlags.Const);
       
-      variables.push({
+      // Create variable info
+      const variableInfo: VariableInfo = {
         name: variableName,
         type: variableType,
         isConst,
         isExported,
         range,
-      });
+        expressions: [], // Initialize empty expressions array
+      };
+      
+      variables.push(variableInfo);
     }
   }
 
@@ -675,6 +695,179 @@ export class TypeScriptParser implements Parser {
         defaultValue,
       };
     });
+  }
+
+  /**
+   * Process expressions in a node
+   */
+  private processExpression(
+    node: ts.Node,
+    expressions: ExpressionInfo[],
+    sourceFile: ts.SourceFile,
+    context: {
+      functions: FunctionInfo[];
+      variables: VariableInfo[];
+      classes: ClassInfo[];
+      sourceFile: ts.SourceFile;
+      typeChecker?: ts.TypeChecker;
+    }
+  ): void {
+    // Skip non-expression nodes and nodes that are too simple
+    if (!this.isRelevantExpression(node)) {
+      return;
+    }
+
+    // Get the parent function, method, or variable declaration
+    const parentInfo = this.findParentContext(node, context);
+    if (!parentInfo) {
+      return; // Skip if we can't find a parent context
+    }
+
+    // Create expression info
+    const expressionInfo: ExpressionInfo = {
+      type: ts.SyntaxKind[node.kind],
+      text: node.getText(sourceFile),
+      range: [node.getStart(sourceFile), node.getEnd()],
+      parentId: parentInfo.id,
+    };
+
+    // Extract references from the expression
+    if (context.typeChecker) {
+      expressionInfo.references = this.extractReferences(node, sourceFile, context.typeChecker);
+    }
+
+    // Add to the expressions array
+    expressions.push(expressionInfo);
+
+    // Add to the parent's expressions array
+    if (parentInfo.type === 'function') {
+      const functionInfo = context.functions.find(f => f.name === parentInfo.name);
+      if (functionInfo) {
+        if (!functionInfo.expressions) {
+          functionInfo.expressions = [];
+        }
+        functionInfo.expressions.push(expressionInfo);
+      }
+    } else if (parentInfo.type === 'variable') {
+      const variableInfo = context.variables.find(v => v.name === parentInfo.name);
+      if (variableInfo) {
+        if (!variableInfo.expressions) {
+          variableInfo.expressions = [];
+        }
+        variableInfo.expressions.push(expressionInfo);
+      }
+    }
+  }
+
+  /**
+   * Check if a node is a relevant expression that should be extracted
+   */
+  private isRelevantExpression(node: ts.Node): boolean {
+    // Skip simple literals and identifiers
+    if (
+      ts.isStringLiteral(node) ||
+      ts.isNumericLiteral(node) ||
+      ts.isIdentifier(node) ||
+      ts.isToken(node)
+    ) {
+      return false;
+    }
+
+    // Include these expression types
+    return (
+      ts.isBinaryExpression(node) ||
+      ts.isCallExpression(node) ||
+      ts.isPropertyAccessExpression(node) ||
+      ts.isObjectLiteralExpression(node) ||
+      ts.isArrayLiteralExpression(node) ||
+      ts.isAwaitExpression(node) ||
+      ts.isConditionalExpression(node) ||
+      ts.isNewExpression(node) ||
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node)
+    );
+  }
+
+  /**
+   * Find the parent function, method, or variable declaration for an expression
+   */
+  private findParentContext(
+    node: ts.Node,
+    context: {
+      functions: FunctionInfo[];
+      variables: VariableInfo[];
+      classes: ClassInfo[];
+      sourceFile: ts.SourceFile;
+    }
+  ): { type: 'function' | 'variable'; name: string; id: string } | undefined {
+    // Walk up the AST to find the parent function or variable declaration
+    let current: ts.Node | undefined = node;
+    
+    while (current) {
+      // Check if we're in a function declaration
+      if (ts.isFunctionDeclaration(current) && current.name) {
+        const functionName = current.name.text;
+        const functionInfo = context.functions.find(f => f.name === functionName);
+        if (functionInfo) {
+          return { type: 'function', name: functionName, id: functionName };
+        }
+      }
+      
+      // Check if we're in a variable declaration
+      if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+        const variableName = current.name.text;
+        const variableInfo = context.variables.find(v => v.name === variableName);
+        if (variableInfo) {
+          return { type: 'variable', name: variableName, id: variableName };
+        }
+      }
+      
+      // Move up to the parent
+      current = current.parent;
+    }
+    
+    return undefined;
+  }
+
+  /**
+   * Extract references from an expression
+   */
+  private extractReferences(
+    node: ts.Node,
+    _sourceFile: ts.SourceFile, // Prefixed with underscore to indicate it's not used directly
+    typeChecker: ts.TypeChecker
+  ): string[] {
+    const references: string[] = [];
+    
+    // Helper function to recursively visit nodes and collect references
+    const visitNode = (n: ts.Node) => {
+      // If it's an identifier, try to get its symbol
+      if (ts.isIdentifier(n)) {
+        try {
+          const symbol = typeChecker.getSymbolAtLocation(n);
+          if (symbol) {
+            const declaration = symbol.declarations?.[0];
+            if (declaration) {
+              // Get the name of the referenced symbol
+              const name = symbol.getName();
+              if (name && !references.includes(name)) {
+                references.push(name);
+              }
+            }
+          }
+        } catch (_error) {
+          // Ignore errors in type checking
+        }
+      }
+      
+      // Visit children
+      n.forEachChild(visitNode);
+    };
+    
+    // Start the recursive visit
+    visitNode(node);
+    
+    return references;
   }
 
   /**

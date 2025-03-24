@@ -25,6 +25,7 @@
     "glob": "^11.0.1",
     "ignore": "^7.0.3",
     "neo4j-driver": "^5.28.1",
+    "typescript-language-server": "^4.3.4",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

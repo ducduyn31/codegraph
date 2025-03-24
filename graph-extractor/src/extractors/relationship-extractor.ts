@@ -7,7 +7,8 @@ import type {
   MethodInfo,
   FunctionInfo,
   VariableInfo,
-  ImportInfo
+  ImportInfo,
+  ExpressionInfo
 } from '../parsers/interface.js';
 
 /**
@@ -34,6 +35,7 @@ export class RelationshipExtractor {
     this.extractFunctions(parseResult.functions, fileId, nodes, edges);
     this.extractVariables(parseResult.variables, fileId, nodes, edges);
     this.extractImports(parseResult.imports, fileId, nodes);
+    this.extractExpressions(parseResult.expressions, fileId, nodes, edges);
     
     // We'll handle exports later when we have more files parsed
     // for (const _exportInfo of parseResult.exports) { ... }
@@ -202,6 +204,67 @@ export class RelationshipExtractor {
       const fileNode = nodes.find(n => n.id === fileId);
       if (fileNode) {
         fileNode.properties.imports = [];
+      }
+    }
+  }
+
+  /**
+   * Extract expressions
+   */
+  private extractExpressions(
+    expressions: ExpressionInfo[],
+    fileId: string,
+    nodes: Node[],
+    edges: Edge[]
+  ): void {
+    for (const expressionInfo of expressions) {
+      // Create expression node
+      const expressionId = uuidv4();
+      const expressionNode: Node = {
+        id: expressionId,
+        type: NodeType.Expression,
+        name: expressionInfo.type,
+        properties: {
+          text: expressionInfo.text,
+          range: expressionInfo.range,
+          references: expressionInfo.references,
+        },
+      };
+      nodes.push(expressionNode);
+
+      // Create CONTAINS edge from file to expression
+      this.createContainsEdge(edges, fileId, expressionId);
+
+      // If the expression has a parent, create a relationship to it
+      if (expressionInfo.parentId) {
+        // Find the parent node (function, method, or variable)
+        const parentNode = nodes.find(n =>
+          (n.type === NodeType.Function || n.type === NodeType.Method || n.type === NodeType.Variable) &&
+          n.name === expressionInfo.parentId
+        );
+
+        if (parentNode) {
+          // Create CONTAINS edge from parent to expression
+          this.createContainsEdge(edges, parentNode.id, expressionId);
+        }
+      }
+
+      // Create relationships for references
+      if (expressionInfo.references && expressionInfo.references.length > 0) {
+        for (const reference of expressionInfo.references) {
+          // Find the referenced node
+          const referencedNode = nodes.find(n => n.name === reference);
+          if (referencedNode) {
+            // Create REFERENCES edge from expression to referenced node
+            edges.push({
+              id: uuidv4(),
+              type: EdgeType.DependsOn,
+              sourceId: expressionId,
+              targetId: referencedNode.id,
+              properties: {},
+            });
+          }
+        }
       }
     }
   }

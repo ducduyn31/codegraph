@@ -25,6 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.7.0",
     "common": "workspace:*",
     "dotenv": "^16.4.7",
+    "git": "link:github.com:lux-group/svc-fx.git",
     "neo4j-driver": "^5.28.1"
   },
   "devDependencies": {

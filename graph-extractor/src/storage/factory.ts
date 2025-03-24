@@ -1,4 +1,4 @@
-import { GraphStorage } from './interface.js';
+import type { GraphStorage } from './interface.js';
 import { Neo4jStorage } from './neo4j.js';
 
 /**
@@ -23,7 +23,9 @@ export interface StorageConfig {
 /**
  * Factory for creating storage instances
  */
-export class StorageFactory {
+
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+export  class StorageFactory {
   /**
    * Create a storage instance based on configuration
    */

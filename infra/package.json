@@ -15,7 +15,8 @@
     "@pulumi/aws": "^6.73.0",
     "@pulumi/awsx": "^2.21.1",
     "@pulumi/pulumi": "^3.157.0",
-    "common": "workspace:*"
+    "common": "workspace:*",
+    "git": "link:github.com:lux-group/svc-fx.git"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

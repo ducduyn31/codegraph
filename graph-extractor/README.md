@@ -1,24 +1,25 @@
 # Graph Extractor
 
-A graph-based code extractor for RAG systems that builds a graph representation of codebases and provides tools for querying code structure, tracing dependencies, and debugging error paths.
+A graph-based code extractor CLI tool that builds a graph representation of codebases from GitHub repositories or local directories.
 
 ## Overview
 
-Graph Extractor is an MCP (Model Context Protocol) server that analyzes codebases and builds a graph representation of the code structure, including:
+Graph Extractor is a command-line tool that analyzes codebases and builds a graph representation of the code structure, including:
 
 - File hierarchy (repositories, directories, files)
 - Code elements (classes, methods, functions, variables)
 - Relationships (imports/exports, calls, dependencies)
 
-The graph is stored in a Neo4j database (for local development) or AWS Neptune (for production), and can be queried through MCP tools.
+The graph is stored in a Neo4j database (for local development) or AWS Neptune (for production), and can be queried using Neo4j's query language (Cypher) or other graph database tools.
 
 ## Features
 
+- **GitHub Integration**: Clone and analyze GitHub repositories
 - **Code Parsing**: Parse TypeScript/JavaScript files and extract code structure
 - **Graph Building**: Build a graph representation of the code
-- **Code Structure Querying**: Query the code structure by file, function, or class
-- **Dependency Tracing**: Trace dependencies across repositories
-- **Error Path Analysis**: Identify potential error propagation paths
+- **Flexible Analysis**: Analyze local directories or GitHub repositories
+- **Configurable**: Customize file patterns, database connections, and more
+- **Respects .gitignore**: Automatically excludes files specified in .gitignore files (both in the root and subdirectories)
 
 ## Installation
 
@@ -32,11 +33,14 @@ npm install
 
 # Build the project
 npm run build
+
+# Install globally (optional)
+npm run install-global
 ```
 
 ## Configuration
 
-The Graph Extractor can be configured through environment variables:
+The Graph Extractor can be configured through environment variables or command-line options:
 
 - `NEO4J_URI`: Neo4j database URI (default: `neo4j://localhost:7687`)
 - `NEO4J_USERNAME`: Neo4j username (default: `neo4j`)
@@ -46,80 +50,56 @@ The Graph Extractor can be configured through environment variables:
 - `DEFAULT_REPOSITORY_PATH`: Default repository path (optional)
 - `DEFAULT_REPOSITORY_NAME`: Default repository name (optional)
 - `DEFAULT_FILE_PATTERNS`: Default file patterns to include, comma-separated (default: `**/*.ts,**/*.js,**/*.tsx,**/*.jsx`)
+- `RESPECT_GITIGNORE`: Whether to respect .gitignore files (default: `true`, set to `false` to disable)
 
 ## Usage
 
-### Running the MCP Server
+### Basic Usage
 
 ```bash
-# Start the MCP server
-npm start
+# Analyze a GitHub repository
+graph-extractor --repo https://github.com/username/repo.git
+
+# Analyze a local directory
+graph-extractor --dir /path/to/local/directory
+
+# Specify a repository name
+graph-extractor --repo https://github.com/username/repo.git --name my-custom-name
+
+# Specify file patterns
+graph-extractor --dir /path/to/local/directory --patterns "**/*.ts,**/*.js"
+
+# Configure Neo4j connection
+graph-extractor --repo https://github.com/username/repo.git --neo4j-uri neo4j://localhost:7687 --neo4j-user neo4j --neo4j-pass mypassword
+
+# Disable respecting .gitignore files
+graph-extractor --dir /path/to/local/directory --no-gitignore
 ```
 
-### MCP Tools
+### Command-Line Options
 
-The Graph Extractor exposes the following MCP tools:
-
-#### 1. Query Code Structure
-
-Retrieve code structure information for a file, function, or class.
-
-```json
-{
-  "filePath": "path/to/file.ts",
-  "functionName": "myFunction",
-  "className": "MyClass",
-  "depth": 2,
-  "format": "markdown"
-}
+```
+Options:
+  -r, --repo <url>           GitHub repository URL to clone and analyze
+  -d, --dir <path>           Local directory to analyze (instead of cloning)
+  -n, --name <name>          Repository name (defaults to extracted from URL or directory name)
+  -p, --patterns <patterns>  File patterns to include (comma-separated, defaults to *.ts,*.js,*.tsx,*.jsx)
+  -o, --output <format>      Output format (json, text, markdown) (default: "markdown")
+  --neo4j-uri <uri>          Neo4j URI (default: "neo4j://localhost:7687")
+  --neo4j-user <user>        Neo4j username (default: "neo4j")
+  --neo4j-pass <password>    Neo4j password (default: "password")
+  --reset                    Reset the database before building the graph (default: false)
+  --no-gitignore             Disable respecting .gitignore files
+  -h, --help                 Display help for command
+  -V, --version              Output the version number
 ```
 
-#### 2. Trace Dependencies
+### Private Repositories
 
-Follow dependency chains across repositories.
+For private GitHub repositories, the tool will prompt you for authentication. You can use either:
 
-```json
-{
-  "sourcePath": "path/to/file.ts",
-  "direction": "both",
-  "dependencyTypes": ["IMPORTS", "DEPENDS_ON"],
-  "maxDepth": 3,
-  "format": "markdown"
-}
-```
-
-#### 3. Debug Error Paths
-
-Identify potential error propagation paths.
-
-```json
-{
-  "errorMessage": "Error message",
-  "functionName": "myFunction",
-  "repositoryName": "myRepo",
-  "format": "markdown"
-}
-```
-
-#### 4. Build Graph
-
-Build a graph representation of the code.
-
-```json
-{
-  "repositoryPath": "path/to/repo",
-  "repositoryName": "myRepo",
-  "filePatterns": ["**/*.ts", "**/*.js"]
-}
-```
-
-### MCP Resources
-
-The Graph Extractor also exposes the following MCP resources:
-
-- `code-graph://structure`: Overall code graph structure
-- `code-graph://{repository}/structure`: Repository code structure
-- `code-graph://{repository}/file/{filePath}`: File code structure
+1. HTTPS with GitHub credentials (the tool will prompt for authentication)
+2. SSH with your SSH key (make sure your SSH key is set up with GitHub)
 
 ## Development
 
@@ -133,7 +113,6 @@ graph-extractor/
 │   ├── graph/           # Graph building
 │   ├── storage/         # Graph storage (Neo4j, Neptune)
 │   ├── query/           # Query engine
-│   ├── tools/           # MCP tools
 │   ├── types/           # Type definitions
 │   ├── config.ts        # Configuration
 │   └── index.ts         # Main entry point
@@ -142,11 +121,14 @@ graph-extractor/
 └── tsconfig.json
 ```
 
-### Building
+### Building and Development
 
 ```bash
 # Build the project
 npm run build
+
+# Run in development mode
+npm run dev
 
 # Run linting
 npm run lint
@@ -155,11 +137,14 @@ npm run lint
 npm run format
 ```
 
+Note: The development mode uses Node.js with the ts-node loader to run TypeScript files directly without pre-compilation.
+
 ## Requirements
 
 - Node.js 16+
 - Neo4j 4.4+ (for local development)
 - AWS Neptune (for production, optional)
+- Git (for cloning repositories)
 
 ## License
 

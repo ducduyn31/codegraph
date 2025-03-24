@@ -51,6 +51,12 @@ export interface GraphExtractorConfig {
    * Default file patterns to include
    */
   defaultFilePatterns?: string[];
+  
+  /**
+   * Whether to respect .gitignore files
+   * @default true
+   */
+  respectGitignore?: boolean;
 }
 
 /**
@@ -61,7 +67,7 @@ export function loadConfig(): GraphExtractorConfig {
     neo4j: {
       uri: process.env.NEO4J_URI || 'neo4j://localhost:7687',
       username: process.env.NEO4J_USERNAME || 'neo4j',
-      password: process.env.NEO4J_PASSWORD || 'password',
+      password: process.env.NEO4J_PASSWORD || 'bitnami1',
     },
     neptune: process.env.NEPTUNE_URI
       ? {
@@ -74,5 +80,6 @@ export function loadConfig(): GraphExtractorConfig {
     defaultFilePatterns: process.env.DEFAULT_FILE_PATTERNS
       ? process.env.DEFAULT_FILE_PATTERNS.split(',')
       : ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'],
+    respectGitignore: process.env.RESPECT_GITIGNORE !== 'false', // Default to true unless explicitly set to 'false'
   };
 }

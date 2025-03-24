@@ -29,7 +29,7 @@ export interface ParseResult {
 export interface ImportInfo {
   name: string;
   path: string;
-  isDefault: boolean;
+  isDefault?: boolean;
   range: [number, number];
 }
 
@@ -38,7 +38,7 @@ export interface ImportInfo {
  */
 export interface ExportInfo {
   name: string;
-  isDefault: boolean;
+  isDefault?: boolean;
   range: [number, number];
 }
 

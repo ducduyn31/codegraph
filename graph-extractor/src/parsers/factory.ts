@@ -1,4 +1,4 @@
-import { Parser } from './interface.js';
+import type { Parser } from './interface.js';
 import { TypeScriptParser } from './typescript.js';
 
 /**
@@ -13,22 +13,25 @@ export enum ParserType {
 /**
  * Factory for creating parser instances
  */
-export class ParserFactory {
+
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+export  class ParserFactory {
   private static parsers: Map<string, Parser> = new Map();
 
   /**
    * Get a parser for a specific file extension
    */
   static getParserForExtension(extension: string): Parser | null {
+    let extensionForParser = extension;
     // Normalize extension
     if (!extension.startsWith('.')) {
-      extension = `.${extension}`;
+      extensionForParser = `.${extension}`;
     }
-    extension = extension.toLowerCase();
+    extensionForParser = extension.toLowerCase();
 
     // Check if we have a parser for this extension
     for (const parser of ParserFactory.parsers.values()) {
-      if (parser.getSupportedExtensions().includes(extension)) {
+      if (parser.getSupportedExtensions().includes(extensionForParser)) {
         return parser;
       }
     }
@@ -42,6 +45,7 @@ export class ParserFactory {
   static getParser(type: ParserType): Parser {
     // Check if we already have an instance
     if (ParserFactory.parsers.has(type)) {
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
       return ParserFactory.parsers.get(type)!;
     }
 

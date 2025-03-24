@@ -13,6 +13,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "git": "link:github.com:lux-group/svc-fx.git",
     "neo4j-driver": "^5.7.0"
   },
   "devDependencies": {
